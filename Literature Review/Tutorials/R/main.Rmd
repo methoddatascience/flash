@@ -109,3 +109,15 @@ plot_density(train[,-c(1)], ggtheme = theme_gray(base_size = 15, base_family = "
 ```
 
 From plots, it seems there are many fluctations in many features and we will need to deal with each one of it individually.
+
+
+
+## Resonse Variable Against Features Overview
+ Now, let us see how discreate and continuos features interact with the response variable first.
+
+```{r desnity_response}
+plot_scatterplot(train[,-c(1)], by = "SalePrice")
+```
+
+The plots confirm my doubs about continuos features in specific, it needs serious handling.
+Now let us move to the final stage of our EDA, corrleation.
