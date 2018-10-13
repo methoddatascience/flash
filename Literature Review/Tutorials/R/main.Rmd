@@ -1,0 +1,79 @@
+---
+title: "Competition Tutorial"
+author: "Mohammed Ali"
+date: "October 13, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Load required libs
+load.libraries <- c("tidyverse", "DataExplorer")
+install.lib <- load.libraries[!load.libraries %in% installed.packages()]
+for(libs in install.lib) install.packages(libs, dependences = TRUE)
+sapply(load.libraries, require, character = TRUE)
+
+#read train and test data
+train <- read.csv("../../../data/train.csv")
+test <- read.csv("../../../data/test.csv")
+```
+
+# EDA
+
+## Data Structure
+first let take us take a glance for `train` structure
+
+```{r structure}
+introduce(train)
+```
+
+We can conduct from above the following:
+* There is a balance betweeen *discreat* and *continous* features.
+* Nearly 6 % of data is missing.
+*
+Let us see how data is organized.
+
+```{r glimbse_summary}
+glimpse(train)
+summary(train)
+```
+
+From above we see:
+* There are some outliers scattred here and there, we investigate in details in next sections.
+* The missing observaes are scattred among features, let us investigate that more.
+
+```{r missing_data, fig.height= 20}
+plot_missing(train, title = "Missing Data", ggtheme = theme_gray(base_size = 15))
+```
+
+
+The categorical features with the largest number of missing values are: 
+
+* `PoolQC` (99.52%):  Pool Quality, no wonder :)
+* `MiscFeature` (96.3%): Miscellaneous features not covered in other categories
+* `Alley` (93.7%): indicates the type of alley access
+* `Fence` (80%): Fence Quality
+* `FirePlaceQu` (47.26%): Fireplace quality
+* `GarageType` (5.55%): related features
+* `GarageYrBlt` (5.55%): I will convert this feature to categorical and treat it like that
+* `GarageFinish` (5.55%): Interior finish of the garage
+* `GarageQUal` (5.55%): Garage quality
+* `GarageCond` (5.55%): Garage condition
+* `BsmtExposure` (2.6%): Refers to walkout or garden level walls.
+* `BsmtFinType2` (2.6%): Rating of basement finished area (if multiple types)
+* `BsmtQual` (2.53%): Evaluates the height of the basement
+* `BsmtCond` (2.53%): Evaluates the general condition of the basement
+* `BsmtFinType1` (2.53%): Rating of basement finished area
+* `MasVnrType` (0.55%): Masonry veneer type
+
+
+I will Impute categorical features by converting `NA` to *Not available* level except `MasVnrType` I will add level `others` as they must used something to build with.
+
+The missing values indicate that majority of the houses do not have alley access, no pool, no fence and no elevator, 2nd garage, shed or tennis court that is covered by the MiscFeature.
+
+The numeric variables do not have as many missing values but there are still some present:
+
+* `LotFrontage` (17.74%): Linear feet of street connected to property
+    * Maybe I will use the `mean` or `meadin` functions.
+* `MasVnrArea` (0.55%): Masonry veneer area in square feet
+    * Will impute by 0, as missing means that it does not exist.
