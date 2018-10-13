@@ -1,0 +1,15 @@
+---
+title: "Competition Tutorial"
+author: "Mohammed Ali"
+date: "October 13, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+load.libraries <- c("tidyverse", "DataExplorer")
+install.lib <- load.libraries[!load.libraries %in% installed.packages()]
+for(libs in install.lib) install.packages(libs, dependences = TRUE)
+sapply(load.libraries, require, character = TRUE)
+```
+
