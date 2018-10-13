@@ -42,6 +42,8 @@ From above we see:
 * There are some outliers scattred here and there, we investigate in details in next sections.
 * The missing observaes are scattred among features, let us investigate that more.
 
+## Missing Data
+
 ```{r missing_data, fig.height= 20}
 plot_missing(train, title = "Missing Data", ggtheme = theme_gray(base_size = 15))
 ```
@@ -77,3 +79,24 @@ The numeric variables do not have as many missing values but there are still som
     * Maybe I will use the `mean` or `meadin` functions.
 * `MasVnrArea` (0.55%): Masonry veneer area in square feet
     * Will impute by 0, as missing means that it does not exist.
+
+## Discreate Features Overview
+
+Let us have a quick view
+
+```{r discreate_plots}
+plot_bar(train)
+```
+
+
+From the first look there are some features with many levels with no realy small values as:
+
+* `Neighborhood`
+* `Condition1`
+* `Condition2`
+* `HouseStyle`
+* `RoofMatl`
+* `Exterior1st`
+* `Exterior2nd`
+* `Functional`
+* `SaleType`
