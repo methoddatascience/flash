@@ -100,3 +100,12 @@ From the first look there are some features with many levels with no realy small
 * `Exterior2nd`
 * `Functional`
 * `SaleType`
+
+## Continuos Features Overview
+Now, let us check the continuos features
+
+```{r density}
+plot_density(train[,-c(1)], ggtheme = theme_gray(base_size = 15, base_family = "serif"))
+```
+
+From plots, it seems there are many fluctations in many features and we will need to deal with each one of it individually.
