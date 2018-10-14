@@ -138,3 +138,39 @@ corrplot(correlations, method="square")
 
 It seems there is a high corrletation among continuos features, we will need to treat that in Feature Engineering phase.
 
+### Plot scatter plot for variables that have high correlation.
+
+The correlation matrix below shows that there are several variables that are strongly and positively correlated with housing price.
+
+High positive correlation:
+
+* OverallQual
+* YearBuilt
+* YearRemodAdd
+* MasvnrArea
+* BsmtFinSF1
+* TotalBsmtSF
+* 1stFlrSF
+* GrLiveArea
+* FullBath
+* TotRmsAbvGrd
+* FirePlaces
+* GarageYrBlt
+* GarageCars
+* GarageArea
+* WoodDeskSF
+* OpenPorchSF
+
+The number of enclosed porches are negatively correlated with year built. It seems that potential housebuyers do not want an enclosed porch and house developers have been building less enclosed porches in recent years. It is also negatively correlated with SalePrice, which makes sense.
+
+There is some slight negative correlation between OverallCond and SalePrice. There is also strong negative correlation between Yearbuilt and OverallCond. It seems to be that recently built houses tend to been in worse Overall Condition.
+
+```{r OverallCond_YearBuilt}
+train %>% 
+  select(OverallCond, YearBuilt) %>% 
+  ggplot(aes(as.factor(OverallCond),YearBuilt)) +
+  geom_boxplot() +
+  xlab('Overall Condition')
+```
+
+
