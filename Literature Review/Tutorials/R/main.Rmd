@@ -11,7 +11,8 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 # Load required libs
-load.libraries <- c("tidyverse", "DataExplorer", "corrplot", "outliers", "ggpubr", "car")
+load.libraries <- c("tidyverse", "DataExplorer", "corrplot", "outliers",
+                    "ggpubr", "car", "forcats")
 install.lib <- load.libraries[!load.libraries %in% installed.packages()]
 for(libs in install.lib) install.packages(libs, dependences = TRUE)
 sapply(load.libraries, require, character = TRUE)
@@ -244,4 +245,111 @@ qqPlot(train$SalePrice)
 ```
 
 much better. now let us move to high missing features.
+
+## Missing Features Treatment
+### High Missing Values Percentage
+I changed my mind, I will drop high missing values, it seems to risky to keep them
+
+```{r PoolQC}
+summary(train$PoolQC)
+train$PoolQC <- NULL
+test$PoolQC <- NULL
+```
+
+
+```{r MiscFeature}
+summary(train$MiscFeature)
+train$MiscFeature <- NULL
+test$MiscFeature <- NULL
+```
+
+
+```{r Alley}
+summary(train$Alley)
+train$Alley <- NULL
+test$Alley <- NULL
+```
+
+```{r Fence}
+summary(train$Fence )
+train$Fence  <- NULL
+test$Fence  <- NULL
+```
+
+### Others
+I will impute others
+```{r FireplaceQu}
+summary(train$FireplaceQu)
+train$FireplaceQu <- fct_explicit_na(train$FireplaceQu, "NA")
+test$FireplaceQu <- fct_explicit_na(test$FireplaceQu, "NA")
+summary(train$FireplaceQu)
+```
+
+
+```{r Garage_features}
+summary(train$GarageType)
+train$GarageType <- fct_explicit_na(train$GarageType, "NA")
+test$GarageType <- fct_explicit_na(test$GarageType, "NA")
+
+# I will convert GarageYrBlt to factor
+train$GarageYrBlt <- as.factor(train$GarageYrBlt)
+test$GarageYrBlt <- as.factor(test$GarageYrBlt)
+
+summary(train$GarageYrBlt)
+train$GarageYrBlt <- fct_explicit_na(train$GarageYrBlt, "NA")
+test$GarageYrBlt <- fct_explicit_na(test$GarageYrBlt, "NA")
+
+summary(train$GarageFinish)
+train$GarageFinish <- fct_explicit_na(train$GarageFinish, "NA")
+test$GarageFinish <- fct_explicit_na(test$GarageFinish, "NA")
+
+summary(train$GarageQual)
+train$GarageQual <- fct_explicit_na(train$GarageQual, "NA")
+test$GarageQual <- fct_explicit_na(test$GarageQual, "NA")
+
+summary(train$GarageCond)
+train$GarageQual <- fct_explicit_na(train$GarageQual, "NA")
+test$GarageQual <- fct_explicit_na(test$GarageQual, "NA")
+```
+
+```{r Bsmt_Features}
+summary(train$BsmtExposure)
+train$BsmtExposure <- fct_explicit_na(train$BsmtExposure, "NA")
+test$BsmtExposure <- fct_explicit_na(test$BsmtExposure, "NA")
+
+summary(train$BsmtFinType2)
+train$BsmtFinType2 <- fct_explicit_na(train$BsmtFinType2, "NA")
+test$BsmtFinType2 <- fct_explicit_na(test$BsmtFinType2, "NA")
+
+summary(train$BsmtQual)
+train$BsmtQual <- fct_explicit_na(train$BsmtQual, "NA")
+test$BsmtQual <- fct_explicit_na(test$BsmtQual, "NA")
+
+summary(train$BsmtCond)
+train$BsmtCond <- fct_explicit_na(train$BsmtCond, "NA")
+test$BsmtCond <- fct_explicit_na(test$BsmtCond, "NA")
+
+summary(train$BsmtFinType1)
+train$BsmtFinType1 <- fct_explicit_na(train$BsmtFinType1, "NA")
+test$BsmtFinType1 <- fct_explicit_na(test$BsmtFinType1, "NA")
+```
+
+
+
+```{r MasVnr_Features}
+summary(train$MasVnrType)
+train$MasVnrType <- fct_explicit_na(train$MasVnrType, "NA")
+test$MasVnrType <- fct_explicit_na(test$MasVnrType, "NA")
+
+summary(train$MasVnrArea)
+train$MasVnrArea[is.na(train$MasVnrArea)]<- 0
+test$MasVnrArea[is.na(test$MasVnrArea)]<- 0
+```
+
+
+```{r Electrical_Feature}
+summary(train$Electrical)
+train$Electrical <- fct_explicit_na(train$Electrical, "NA")
+test$Electrical <- fct_explicit_na(test$Electrical, "NA")
+```
 
