@@ -11,7 +11,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 # Load required libs
-load.libraries <- c("tidyverse", "DataExplorer", "corrplot")
+load.libraries <- c("tidyverse", "DataExplorer", "corrplot", "outliers", "ggpubr", "car")
 install.lib <- load.libraries[!load.libraries %in% installed.packages()]
 for(libs in install.lib) install.packages(libs, dependences = TRUE)
 sapply(load.libraries, require, character = TRUE)
@@ -173,4 +173,75 @@ train %>%
   xlab('Overall Condition')
 ```
 
+
+
+
+# Feature Engineering
+Now we came to the most critical part that will determine what feature our model will depend on.
+I will check all featuers with the followingin mind:
+
+* Treat missing data:
+    * Eaither impute missing data or remove the feature at all.
+* Treat outliers
+* Treat corrleation with other featres:
+    * Make new feature or drop colinear features but one.
+* Check for linearity:
+    * See if we need to transform the feature.
+* Check the relation with theresponse variable.
+* Encoding Categorical data
+For the last step I will begin with the response variable.
+
+## Response Variable
+### Outlier check
+#### Univariate approach
+Let us check for summary firt
+
+```{r response_summary}
+summary(train$SalePrice)
+```
+
+OK, the good news we do not have missing data, but it seems we have outlier. Let us make sure.
+
+```{r response_box_stat}
+outlier_values <- boxplot.stats(train$SalePrice)$out  # outlier values.
+boxplot(train$SalePrice, main="Price", boxwex=0.1)
+mtext(paste("Outliers: ", paste(outlier_values, collapse=", ")), cex=0.6)
+```
+
+and by using `outliers` package
+
+```{r response_outlier}
+outlier(train$SalePrice)
+```
+
+OK, it seems that we have one or two obserations as outlier at least, it is not much trouble, is it?
+Let us check for normality
+
+### Normality
+*Density plot* and *Q-Q plot* can be used to check normality visually.
+```{r response_normality}
+ggdensity(train$SalePrice, 
+          main = "Density plot of SalePrice",
+          xlab = "Sale Price")
+qqPlot(train$SalePrice)
+```
+
+OK, we have a long right tail on first plot and baised line on the second, so it is not so normal.
+Let us confirm that by performing *significance test *
+
+```{r response significance_test }
+shapiro.test(train$SalePrice)
+```
+
+It is confirmed, let us now transform the response variable and recheck.
+
+```{r transform}
+train$SalePrice <- log(train$SalePrice)
+ggdensity(train$SalePrice, 
+          main = "Density plot of SalePrice",
+          xlab = "Sale Price")
+qqPlot(train$SalePrice)
+```
+
+much better. now let us move to high missing features.
 
