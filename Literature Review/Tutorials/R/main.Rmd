@@ -12,7 +12,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 # Load required libs
 load.libraries <- c("tidyverse", "DataExplorer", "corrplot", "outliers",
-                    "ggpubr", "car", "forcats")
+                    "ggpubr", "car", "forcats", "Boruta", "earth")
 install.lib <- load.libraries[!load.libraries %in% installed.packages()]
 for(libs in install.lib) install.packages(libs, dependences = TRUE)
 sapply(load.libraries, require, character = TRUE)
@@ -282,9 +282,13 @@ I will impute others
 summary(train$FireplaceQu)
 train$FireplaceQu <- fct_explicit_na(train$FireplaceQu, "NA")
 test$FireplaceQu <- fct_explicit_na(test$FireplaceQu, "NA")
-summary(train$FireplaceQu)
 ```
 
+```{r LotFrontage}
+summary(train$LotFrontage)
+train$LotFrontage[is.na(train$LotFrontage)] <- mean(train$LotFrontage, na.rm = TRUE)
+test$LotFrontage[is.na(test$LotFrontage)] <- mean(test$LotFrontage, na.rm = TRUE)
+```
 
 ```{r Garage_features}
 summary(train$GarageType)
@@ -308,8 +312,8 @@ train$GarageQual <- fct_explicit_na(train$GarageQual, "NA")
 test$GarageQual <- fct_explicit_na(test$GarageQual, "NA")
 
 summary(train$GarageCond)
-train$GarageQual <- fct_explicit_na(train$GarageQual, "NA")
-test$GarageQual <- fct_explicit_na(test$GarageQual, "NA")
+train$GarageCond <- fct_explicit_na(train$GarageCond, "NA")
+test$GarageCond <- fct_explicit_na(test$GarageCond, "NA")
 ```
 
 ```{r Bsmt_Features}
@@ -352,4 +356,56 @@ summary(train$Electrical)
 train$Electrical <- fct_explicit_na(train$Electrical, "NA")
 test$Electrical <- fct_explicit_na(test$Electrical, "NA")
 ```
+
+## Categorical Features
+In addition to the same checks we did on the response variable, we also going to encode the categorical features.
+
+### MSZoning
+MSZoning: Identifies the general zoning classification of the sale.
+		
+ A	Agriculture
+ C	Commercial
+ FV	Floating Village Residential
+ I	Industrial
+ RH	Residential High Density
+ RL	Residential Low Density
+ RP	Residential Low Density Park 
+ RM	Residential Medium Density
+ 
+From *Resonse Variable Against Features Overview* section it seems that houses in *Residential Low Density* are the most expensive houses then *Floating Village Residential* and *Commercial* are the cheapest.
+
+Let us investigate correlation.
+
+```{r MSZoning}
+cor(train$SalePrice, as.integer(train$MSZoning))
+```
+
+From above and *Corrleation* section it seems it is not a big contributor feature. I will drop it.
+
+```{r MSZoning_drop}
+train$MSZoning <- NULL
+test$MSZoning <- NULL
+```
+
+## Important Features
+### Definition
+First I will need to identify the most important features to work on and eleminate others to save effort and time
+
+```{r Boruta_check, message=FALSE}
+# Decide if a variable is important or not using Boruta
+response <- train[, "SalePrice"]
+boruta_output <- Boruta(response ~ . , data = train, doTrace=2)  # perform Boruta search
+boruta_signif <- names(boruta_output$finalDecision[boruta_output$finalDecision %in% c("Confirmed", "Tentative")])  # collect Confirmed and Tentative variables
+boruta_signif
+```
+
+
+We eleminated 20 features, let us use another method
+
+```{r relaimpo}
+lmMod <- earth(SalePrice ~ . , data = train)  # fit lm() model
+ev <- evimp (lmMod) # estimate variable importance
+plot (ev)
+```
+
 
