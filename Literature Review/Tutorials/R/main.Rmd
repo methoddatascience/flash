@@ -1,0 +1,414 @@
+---
+title: "Competition Tutorial"
+author: "Mohammed Ali"
+date: "October 13, 2018"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Load required libs
+load.libraries <- c("tidyverse", "DataExplorer", "corrplot", "outliers",
+                    "ggpubr", "car", "forcats", "Boruta", "earth")
+install.lib <- load.libraries[!load.libraries %in% installed.packages()]
+for(libs in install.lib) install.packages(libs, dependences = TRUE)
+sapply(load.libraries, require, character = TRUE)
+
+#read train and test data
+train <- read.csv("../../../data/train.csv")
+test <- read.csv("../../../data/test.csv")
+```
+
+# EDA
+
+## Data Structure
+first let take us take a glance for `train` structure
+
+```{r structure}
+introduce(train)
+```
+
+We can conduct from above the following:
+* There is a balance betweeen *discreat* and *continous* features.
+* Nearly 6 % of data is missing.
+*
+Let us see how data is organized.
+
+```{r glimbse_summary}
+glimpse(train)
+summary(train)
+```
+
+From above we see:
+* There are some outliers scattred here and there, we investigate in details in next sections.
+* The missing observaes are scattred among features, let us investigate that more.
+
+## Missing Data
+
+```{r missing_data, fig.height= 20}
+plot_missing(train, title = "Missing Data", ggtheme = theme_gray(base_size = 15))
+```
+
+
+The categorical features with the largest number of missing values are: 
+
+* `PoolQC` (99.52%):  Pool Quality, no wonder :)
+* `MiscFeature` (96.3%): Miscellaneous features not covered in other categories
+* `Alley` (93.7%): indicates the type of alley access
+* `Fence` (80%): Fence Quality
+* `FirePlaceQu` (47.26%): Fireplace quality
+* `GarageType` (5.55%): related features
+* `GarageYrBlt` (5.55%): I will convert this feature to categorical and treat it like that
+* `GarageFinish` (5.55%): Interior finish of the garage
+* `GarageQUal` (5.55%): Garage quality
+* `GarageCond` (5.55%): Garage condition
+* `BsmtExposure` (2.6%): Refers to walkout or garden level walls.
+* `BsmtFinType2` (2.6%): Rating of basement finished area (if multiple types)
+* `BsmtQual` (2.53%): Evaluates the height of the basement
+* `BsmtCond` (2.53%): Evaluates the general condition of the basement
+* `BsmtFinType1` (2.53%): Rating of basement finished area
+* `MasVnrType` (0.55%): Masonry veneer type
+
+
+I will Impute categorical features by converting `NA` to *Not available* level except `MasVnrType` I will add level `others` as they must used something to build with.
+
+The missing values indicate that majority of the houses do not have alley access, no pool, no fence and no elevator, 2nd garage, shed or tennis court that is covered by the MiscFeature.
+
+The numeric variables do not have as many missing values but there are still some present:
+
+* `LotFrontage` (17.74%): Linear feet of street connected to property
+    * Maybe I will use the `mean` or `meadin` functions.
+* `MasVnrArea` (0.55%): Masonry veneer area in square feet
+    * Will impute by 0, as missing means that it does not exist.
+
+## Discreate Features Overview
+
+Let us have a quick view
+
+```{r discreate_plots}
+plot_bar(train)
+```
+
+
+From the first look there are some features with many levels with no realy small values as:
+
+* `Neighborhood`
+* `Condition1`
+* `Condition2`
+* `HouseStyle`
+* `RoofMatl`
+* `Exterior1st`
+* `Exterior2nd`
+* `Functional`
+* `SaleType`
+
+## Continuos Features Overview
+Now, let us check the continuos features
+
+```{r density}
+plot_density(train[,-c(1)], ggtheme = theme_gray(base_size = 15, base_family = "serif"))
+```
+
+From plots, it seems there are many fluctations in many features and we will need to deal with each one of it individually.
+
+
+## Resonse Variable Against Features Overview
+ Now, let us see how discreate and continuos features interact with the response variable first.
+
+```{r desnity_response}
+plot_scatterplot(train[,-c(1)], by = "SalePrice")
+```
+
+The plots confirm my doubs about continuos features in specific, it needs serious handling.
+Now let us move to the final stage of our EDA, corrleation.
+
+## Corrleation
+
+```{r cor_cont}
+numeric_var <- names(train)[which(sapply(train, is.numeric))]
+correlations <- cor(na.omit(train[, numeric_var]))
+# correlations
+row_indic <- apply(correlations, 1, function(x) sum(x > 0.3 | x < -0.3) > 1)
+
+correlations<- correlations[row_indic ,row_indic ]
+corrplot(correlations, method="square")
+```
+
+It seems there is a high corrletation among continuos features, we will need to treat that in Feature Engineering phase.
+
+### Plot scatter plot for variables that have high correlation.
+
+The correlation matrix below shows that there are several variables that are strongly and positively correlated with housing price.
+
+High positive correlation:
+
+* OverallQual
+* YearBuilt
+* YearRemodAdd
+* MasvnrArea
+* BsmtFinSF1
+* TotalBsmtSF
+* 1stFlrSF
+* GrLiveArea
+* FullBath
+* TotRmsAbvGrd
+* FirePlaces
+* GarageYrBlt
+* GarageCars
+* GarageArea
+* WoodDeskSF
+* OpenPorchSF
+
+The number of enclosed porches are negatively correlated with year built. It seems that potential housebuyers do not want an enclosed porch and house developers have been building less enclosed porches in recent years. It is also negatively correlated with SalePrice, which makes sense.
+
+There is some slight negative correlation between OverallCond and SalePrice. There is also strong negative correlation between Yearbuilt and OverallCond. It seems to be that recently built houses tend to been in worse Overall Condition.
+
+```{r OverallCond_YearBuilt}
+train %>% 
+  select(OverallCond, YearBuilt) %>% 
+  ggplot(aes(as.factor(OverallCond),YearBuilt)) +
+  geom_boxplot() +
+  xlab('Overall Condition')
+```
+
+
+
+
+# Feature Engineering
+Now we came to the most critical part that will determine what feature our model will depend on.
+I will check all featuers with the followingin mind:
+
+* Treat missing data:
+    * Eaither impute missing data or remove the feature at all.
+* Treat outliers
+* Treat corrleation with other featres:
+    * Make new feature or drop colinear features but one.
+* Check for linearity:
+    * See if we need to transform the feature.
+* Check the relation with theresponse variable.
+* Encoding Categorical data
+For the last step I will begin with the response variable.
+
+## Response Variable
+### Outlier check
+#### Univariate approach
+Let us check for summary firt
+
+```{r response_summary}
+summary(train$SalePrice)
+```
+
+OK, the good news we do not have missing data, but it seems we have outlier. Let us make sure.
+
+```{r response_box_stat}
+outlier_values <- boxplot.stats(train$SalePrice)$out  # outlier values.
+boxplot(train$SalePrice, main="Price", boxwex=0.1)
+mtext(paste("Outliers: ", paste(outlier_values, collapse=", ")), cex=0.6)
+```
+
+and by using `outliers` package
+
+```{r response_outlier}
+outlier(train$SalePrice)
+```
+
+OK, it seems that we have one or two obserations as outlier at least, it is not much trouble, is it?
+Let us check for normality
+
+### Normality
+*Density plot* and *Q-Q plot* can be used to check normality visually.
+```{r response_normality}
+ggdensity(train$SalePrice, 
+          main = "Density plot of SalePrice",
+          xlab = "Sale Price")
+qqPlot(train$SalePrice)
+```
+
+OK, we have a long right tail on first plot and baised line on the second, so it is not so normal.
+Let us confirm that by performing *significance test *
+
+```{r response significance_test }
+shapiro.test(train$SalePrice)
+```
+
+It is confirmed, let us now transform the response variable and recheck.
+
+```{r transform}
+train$SalePrice <- log(train$SalePrice)
+ggdensity(train$SalePrice, 
+          main = "Density plot of SalePrice",
+          xlab = "Sale Price")
+qqPlot(train$SalePrice)
+```
+
+much better. now let us move to high missing features.
+
+## Missing Features Treatment
+### High Missing Values Percentage
+I changed my mind, I will drop high missing values, it seems to risky to keep them
+
+```{r PoolQC}
+summary(train$PoolQC)
+train$PoolQC <- NULL
+test$PoolQC <- NULL
+```
+
+
+```{r MiscFeature}
+summary(train$MiscFeature)
+train$MiscFeature <- NULL
+test$MiscFeature <- NULL
+```
+
+
+```{r Alley}
+summary(train$Alley)
+train$Alley <- NULL
+test$Alley <- NULL
+```
+
+```{r Fence}
+summary(train$Fence )
+train$Fence  <- NULL
+test$Fence  <- NULL
+```
+
+### Others
+I will impute others
+```{r FireplaceQu}
+summary(train$FireplaceQu)
+train$FireplaceQu <- fct_explicit_na(train$FireplaceQu, "NA")
+test$FireplaceQu <- fct_explicit_na(test$FireplaceQu, "NA")
+```
+
+```{r LotFrontage}
+summary(train$LotFrontage)
+train$LotFrontage[is.na(train$LotFrontage)] <- mean(train$LotFrontage, na.rm = TRUE)
+test$LotFrontage[is.na(test$LotFrontage)] <- mean(test$LotFrontage, na.rm = TRUE)
+```
+
+```{r Garage_features}
+summary(train$GarageType)
+train$GarageType <- fct_explicit_na(train$GarageType, "NA")
+test$GarageType <- fct_explicit_na(test$GarageType, "NA")
+
+# I will convert GarageYrBlt to factor
+train$GarageYrBlt <- as.factor(train$GarageYrBlt)
+test$GarageYrBlt <- as.factor(test$GarageYrBlt)
+
+summary(train$GarageYrBlt)
+train$GarageYrBlt <- fct_explicit_na(train$GarageYrBlt, "NA")
+test$GarageYrBlt <- fct_explicit_na(test$GarageYrBlt, "NA")
+
+summary(train$GarageFinish)
+train$GarageFinish <- fct_explicit_na(train$GarageFinish, "NA")
+test$GarageFinish <- fct_explicit_na(test$GarageFinish, "NA")
+
+summary(train$GarageQual)
+train$GarageQual <- fct_explicit_na(train$GarageQual, "NA")
+test$GarageQual <- fct_explicit_na(test$GarageQual, "NA")
+
+summary(train$GarageCond)
+train$GarageCond <- fct_explicit_na(train$GarageCond, "NA")
+test$GarageCond <- fct_explicit_na(test$GarageCond, "NA")
+```
+
+```{r Bsmt_Features}
+summary(train$BsmtExposure)
+train$BsmtExposure <- fct_explicit_na(train$BsmtExposure, "NA")
+test$BsmtExposure <- fct_explicit_na(test$BsmtExposure, "NA")
+
+summary(train$BsmtFinType2)
+train$BsmtFinType2 <- fct_explicit_na(train$BsmtFinType2, "NA")
+test$BsmtFinType2 <- fct_explicit_na(test$BsmtFinType2, "NA")
+
+summary(train$BsmtQual)
+train$BsmtQual <- fct_explicit_na(train$BsmtQual, "NA")
+test$BsmtQual <- fct_explicit_na(test$BsmtQual, "NA")
+
+summary(train$BsmtCond)
+train$BsmtCond <- fct_explicit_na(train$BsmtCond, "NA")
+test$BsmtCond <- fct_explicit_na(test$BsmtCond, "NA")
+
+summary(train$BsmtFinType1)
+train$BsmtFinType1 <- fct_explicit_na(train$BsmtFinType1, "NA")
+test$BsmtFinType1 <- fct_explicit_na(test$BsmtFinType1, "NA")
+```
+
+
+
+```{r MasVnr_Features}
+summary(train$MasVnrType)
+train$MasVnrType <- fct_explicit_na(train$MasVnrType, "NA")
+test$MasVnrType <- fct_explicit_na(test$MasVnrType, "NA")
+
+summary(train$MasVnrArea)
+train$MasVnrArea[is.na(train$MasVnrArea)]<- 0
+test$MasVnrArea[is.na(test$MasVnrArea)]<- 0
+```
+
+
+```{r Electrical_Feature}
+summary(train$Electrical)
+train$Electrical <- fct_explicit_na(train$Electrical, "NA")
+test$Electrical <- fct_explicit_na(test$Electrical, "NA")
+```
+
+
+## Important Features
+### Definition
+First I will need to identify the most important features to work on and eleminate others to save effort and time
+
+```{r Boruta_check, message=FALSE}
+# Decide if a variable is important or not using Boruta
+response <- train[, "SalePrice"]
+boruta_output <- Boruta(response ~ . , data = train, doTrace=2)  # perform Boruta search
+boruta_signif <- names(boruta_output$finalDecision[boruta_output$finalDecision %in% c("Confirmed", "Tentative")])  # collect Confirmed and Tentative variables
+boruta_signif
+```
+
+
+We eleminated 20 features, let us use another method
+
+```{r relaimpo}
+lmMod <- earth(SalePrice ~ . , data = train)  # fit lm() model
+ev <- evimp (lmMod) # estimate variable importance
+plot (ev)
+```
+
+
+I will enter a loop start with building different models using these important features as a base line, then start to improvethem by going into Features engierring steps one by one and remodell and compaer until we are satisfied. So let us continue investigation on the important features.
+### YearBuilt, YearRemodAdd, OverallQual and OverallCond
+These are correlated fields that we need to treat them toghather.
+#### Description
+
+`YearBuilt`: Original construction date
+`YearRemodAdd`: Remodel date (same as construction date if no remodeling or additions)
+`OverallQual`: Rates the overall material and finish of the house
+
+       * 10	Very Excellent
+       * 9	Excellent
+       * 8	Very Good
+       * 7	Good
+       * 6	Above Average
+       * 5	Average
+       * 4	Below Average
+       * 3	Fair
+       * 2	Poor
+       * 1	Very Poor
+	
+OverallCond: Rates the overall condition of the house
+
+       * 10	Very Excellent
+       * 9	Excellent
+       * 8	Very Good
+       * 7	Good
+       * 6	Above Average	
+       * 5	Average
+       * 4	Below Average	
+       * 3	Fair
+       * 2	Poor
+       * 1	Very Poor
