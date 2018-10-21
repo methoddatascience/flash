@@ -357,35 +357,6 @@ train$Electrical <- fct_explicit_na(train$Electrical, "NA")
 test$Electrical <- fct_explicit_na(test$Electrical, "NA")
 ```
 
-## Categorical Features
-In addition to the same checks we did on the response variable, we also going to encode the categorical features.
-
-### MSZoning
-MSZoning: Identifies the general zoning classification of the sale.
-		
- A	Agriculture
- C	Commercial
- FV	Floating Village Residential
- I	Industrial
- RH	Residential High Density
- RL	Residential Low Density
- RP	Residential Low Density Park 
- RM	Residential Medium Density
- 
-From *Resonse Variable Against Features Overview* section it seems that houses in *Residential Low Density* are the most expensive houses then *Floating Village Residential* and *Commercial* are the cheapest.
-
-Let us investigate correlation.
-
-```{r MSZoning}
-cor(train$SalePrice, as.integer(train$MSZoning))
-```
-
-From above and *Corrleation* section it seems it is not a big contributor feature. I will drop it.
-
-```{r MSZoning_drop}
-train$MSZoning <- NULL
-test$MSZoning <- NULL
-```
 
 ## Important Features
 ### Definition
@@ -409,3 +380,35 @@ plot (ev)
 ```
 
 
+I will enter a loop start with building different models using these important features as a base line, then start to improvethem by going into Features engierring steps one by one and remodell and compaer until we are satisfied. So let us continue investigation on the important features.
+### YearBuilt, YearRemodAdd, OverallQual and OverallCond
+These are correlated fields that we need to treat them toghather.
+#### Description
+
+`YearBuilt`: Original construction date
+`YearRemodAdd`: Remodel date (same as construction date if no remodeling or additions)
+`OverallQual`: Rates the overall material and finish of the house
+
+       * 10	Very Excellent
+       * 9	Excellent
+       * 8	Very Good
+       * 7	Good
+       * 6	Above Average
+       * 5	Average
+       * 4	Below Average
+       * 3	Fair
+       * 2	Poor
+       * 1	Very Poor
+	
+OverallCond: Rates the overall condition of the house
+
+       * 10	Very Excellent
+       * 9	Excellent
+       * 8	Very Good
+       * 7	Good
+       * 6	Above Average	
+       * 5	Average
+       * 4	Below Average	
+       * 3	Fair
+       * 2	Poor
+       * 1	Very Poor
