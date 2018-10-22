@@ -22,10 +22,6 @@ price_lm <- lm(SalePrice ~ ., data = na.omit(training))
 summary(price_lm)
 
 # Validation
-price_lm$xlevels[["Exterior1st"]] <- union(price_lm$xlevels[["Exterior1st"]], levels(validation$Exterior1st))
-price_lm$xlevels[["Condition2"]] <- union(price_lm$xlevels[["Condition2"]], levels(validation$Condition1))
-price_lm$xlevels[["Condition2"]] <- union(price_lm$xlevels[["Condition2"]], levels(validation$Exterior1st))
-
 prediction <- predict(price_lm, validation, type="response")
 model_output <- cbind(validation, prediction)
 
