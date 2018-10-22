@@ -360,16 +360,19 @@ write.csv(sub, file = "output/sub12.csv", row.names = FALSE, quote = FALSE)
 #--------------------------------
 # H2O GBM
 #--------------------------------
+search_criteria <- list(strategy = "RandomDiscrete",
+                        max_models = 10, 
+                        seed = 1)
 
 grid <- h2o.grid("gbm",grid_id = "my_grid",
-                 
+                 search_criteria = search_criteria,
                  hyper_params = list(
                    max_depth = c(20, 30),
                    #min_rows = c(2, 5, 10),
                    sample_rate = c(0.5, 0.8), #0.95, 1.0),
                    ##col_sample_rate = c(0.5, 0.8),# 0.95, 1.0),
                    #col_sample_rate_per_tree = c(0.8, 0.99, 1.0),
-                   learn_rate = c(0.1),
+                   learn_rate = seq(0.0001, 0.2, 0.0001),
                    ntrees = c(100, 150),# 200, 250),
                    seed = 123
                  ),
@@ -400,4 +403,4 @@ h2o.performance(fit.best)
 
 predict.gbm <- as.data.frame(h2o.predict(fit.best, test.h2o))
 sub <- data.frame(Id = test$Id, SalePrice  = exp(predict.gbm$predict))
-write.csv(sub, file = "output/sub10.csv", row.names = FALSE, quote = FALSE)
+write.csv(sub, file = "output/sub13.csv", row.names = FALSE, quote = FALSE)
