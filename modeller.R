@@ -2,6 +2,7 @@ library(tidyverse)
 library(randomForest)
 library(xgboost)
 library(ModelMetrics)
+library(h2o)
 
 # Read updated train and test files
 train <- read.csv("Literature Review/Kernels/train_1.csv")
@@ -183,3 +184,129 @@ model_output <- cbind(predict, prediction)
 
 sub <- data.frame(Id = test$Id, SalePrice = exp(model_output$prediction))
 write.csv(sub, file = "output/sub4.csv", row.names = FALSE, quote = FALSE)
+
+########################################
+## Feature Selection
+########################################
+base.mod <- lm( SalePrice ~ 1 , data = train)  # base intercept only model
+all.mod <- lm( SalePrice ~ . ,
+               data = train) # full model with all predictors
+stepMod <-
+  step(
+    base.mod,
+    scope = list(lower = base.mod, upper = all.mod),
+    direction = "both",
+    trace = 0,
+    steps = 1000
+  )  # perform step-wise algorithm
+shortlistedVars <-
+  names(unlist(stepMod[[1]])) # get the shortlisted variable.
+shortlistedVars <-
+  shortlistedVars[!shortlistedVars %in% "(Intercept)"]  # remove intercept
+print(shortlistedVars)
+summary(stepMod)
+
+y.dep <- grep("SalePrice", colnames(train))
+x.indep <- c(grep("OverallQual", colnames(train)), 
+             grep("TotalSF", colnames(train)),
+             grep("GarageCars", colnames(train)),
+             grep("YearRemodAdd", colnames(train)),
+             grep("YearBuilt", colnames(train)),
+             grep("KitchenQual", colnames(train)),
+             grep("ExterQual ", colnames(train)))
+
+h2o.init()
+train.h2o <- as.h2o(train)
+test.h2o <- as.h2o(test)
+r <- h2o.runif(train.h2o)
+trainHex.split <- h2o.splitFrame(train.h2o, ratios=.70)
+#--------------------------------
+# H2O Multiple Regression 
+#--------------------------------
+
+# Base GLM
+regression.model <- h2o.glm( y = y.dep,
+                             x = x.indep,
+                             training_frame = trainHex.split[[1]],
+                             nfolds =  10,
+                             validation_frame = trainHex.split[[2]],
+                             family = "gaussian",
+                             seed = 123)
+h2o.performance(regression.model)
+
+predict.reg <- as.data.frame(h2o.predict(regression.model, test.h2o))
+sub <- data.frame(Id = test$Id, SalePrice  = exp(predict.reg$predict))
+write.csv(sub, file = "output/sub5.csv", row.names = FALSE, quote = FALSE)
+
+# Grid Search
+solvers <- c("IRLSM", "L_BFGS", "COORDINATE_DESCENT_NAIVE", "COORDINATE_DESCENT")
+
+families <- c("gaussian", "poisson", "gamma")
+
+gaussianLinks <- c("identity", "log", "inverse")
+
+poissonLinks <- c("log")
+
+gammaLinks <- c("identity", "log", "inverse")
+
+gammaLinks_CD <- c("identity", "log")
+
+allGrids <- lapply(solvers, function(solver){
+  lapply(families, function(family){
+    
+    if(family == "gaussian")theLinks <- gaussianLinks
+    else if(family == "poisson")theLinks <- poissonLinks
+    else{
+      if(solver == "COORDINATE_DESCENT")theLinks <- gammaLinks_CD
+      else theLinks = gammaLinks
+    }
+    
+    lapply(theLinks, function(link){
+      grid_id = paste("GLM", solver, family, link, sep="_")
+      h2o.grid("glm", grid_id = grid_id,
+               hyper_params = list(
+                 alpha = c(0, 0.1, 0.5, 0.99)
+               ),
+               x = x.indep,
+               y = y.dep,
+               training_frame =  trainHex.split[[1]],
+               validation_frame = trainHex.split[[2]],
+               nfolds = 10,
+               lambda_search = TRUE,
+               solver = solver,
+               family = family,
+               link = link,
+               max_iterations = 1000
+      )
+    })
+  })
+})
+
+get_best_id <- function(grid) {
+  # print out the mse for all of the models
+  model_ids <- grid@model_ids
+  mse <- vector(mode="numeric", length=0)
+  grid_models <- lapply(model_ids, function(model_id) { model = h2o.getModel(model_id) })
+  for (i in 1:length(grid_models)) {
+    print(sprintf("mse: %f", h2o.mse(grid_models[[i]])))
+    mse[i] <- h2o.mse(grid_models[[i]])
+  }
+  
+  best_id <- model_ids[order(mse,decreasing=F)][1]
+  print(best_id)
+  best_id
+}
+
+grids_list <- unlist(allGrids)
+all_models <- map(grids_list, ~ get_best_id(.x))
+
+
+
+fit.best <- h2o.getModel(model_id = "GLM_COORDINATE_DESCENT_gaussian_identity_model_3")
+h2o.performance(fit.best)
+
+predict.glm <- as.data.frame(h2o.predict(fit.best, test.h2o))
+sub <- data.frame(Id = test$Id, SalePrice  = exp(predict.glm$predict))
+write.csv(sub, file = "output/sub6.csv", row.names = FALSE, quote = FALSE)
+
+
