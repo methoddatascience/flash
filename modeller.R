@@ -314,11 +314,11 @@ write.csv(sub, file = "output/sub6.csv", row.names = FALSE, quote = FALSE)
 #--------------------------------
 grid <- h2o.grid("randomForest",
                  hyper_params = list(
-                   ntrees = c(50, 100, 150, 200, 250),
+                   ntrees = c(50, 70, 90),
                    #mtries = c(2, 3, 4, 5),
-                   max_depth=c(20, 30, 40)
-                   #sample_rate = c(0.5,  0.95)
-                   #col_sample_rate_per_tree = c(0.5, 0.9, 1.0)
+                   max_depth=c(50, 70, 90),
+                   sample_rate = c(0.5,  0.8)
+                  # col_sample_rate_per_tree = c(0.5, 0.9, 1.0)
                  ),
                  y = y.dep, 
                  x = x.indep,
@@ -326,7 +326,6 @@ grid <- h2o.grid("randomForest",
                  training_frame = trainHex.split[[1]],
                  validation_frame = trainHex.split[[2]],
                  nfolds = 10,
-                 #max_depth = 40,
                  stopping_metric = "RMSE",
                  stopping_tolerance = 0,
                  stopping_rounds = 4,
@@ -337,7 +336,7 @@ grid
 
 # print out the mse for all of the models
 model_ids <- grid@model_ids
-mse <- vector(mode="numeric", length=0)
+rmse <- vector(mode="numeric", length=0)
 grid_models <- lapply(model_ids, function(model_id) { model = h2o.getModel(model_id) })
 for (i in 1:length(grid_models)) {
   print(sprintf("rmse: %f", h2o.rmse(grid_models[[i]])))
@@ -352,4 +351,49 @@ h2o.performance(fit.best)
 
 predict.rf <- as.data.frame(h2o.predict(fit.best, test.h2o))
 sub <- data.frame(Id = test$Id, SalePrice  = exp(predict.rf$predict))
-write.csv(sub, file = "output/sub7.csv", row.names = FALSE, quote = FALSE)
+write.csv(sub, file = "output/sub9.csv", row.names = FALSE, quote = FALSE)
+
+#--------------------------------
+# H2O GBM
+#--------------------------------
+
+grid <- h2o.grid("gbm",grid_id = "my_grid",
+                 
+                 hyper_params = list(
+                   max_depth = c(20, 30),
+                   #min_rows = c(2, 5, 10),
+                   sample_rate = c(0.5, 0.8), #0.95, 1.0),
+                   ##col_sample_rate = c(0.5, 0.8),# 0.95, 1.0),
+                   #col_sample_rate_per_tree = c(0.8, 0.99, 1.0),
+                   learn_rate = c(0.1),
+                   ntrees = c(100, 150),# 200, 250),
+                   seed = 123
+                 ),
+                 y = y.dep, x = x.indep,
+                 # stopping_tolerance = 0.001,
+                 # stopping_rounds=3,
+                 # score_tree_interval = 10,
+                 distribution="gaussian",
+                 training_frame = trainHex.split[[1]],
+                 validation_frame = trainHex.split[[2]])
+grid
+
+# print out the mse for all of the models
+model_ids <- grid@model_ids
+rmse <- vector(mode="numeric", length=0)
+grid_models <- lapply(model_ids, function(model_id) { model = h2o.getModel(model_id) })
+for (i in 1:length(grid_models)) {
+  print(sprintf("rmse: %f", h2o.rmse(grid_models[[i]])))
+  rmse[i] <- h2o.rmse(grid_models[[i]])
+}
+
+
+best_id <- model_ids[order(rmse,decreasing=F)][1]
+best_id
+
+fit.best <- h2o.getModel(model_id = best_id[[1]])
+h2o.performance(fit.best)
+
+predict.gbm <- as.data.frame(h2o.predict(fit.best, test.h2o))
+sub <- data.frame(Id = test$Id, SalePrice  = exp(predict.gbm$predict))
+write.csv(sub, file = "output/sub10.csv", row.names = FALSE, quote = FALSE)
