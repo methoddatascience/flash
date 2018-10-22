@@ -5,8 +5,8 @@ library(ModelMetrics)
 library(h2o)
 
 # Read updated train and test files
-train <- read.csv("Literature Review/Kernels/train_1.csv")
-test <- read.csv("Literature Review/Kernels/test_1.csv")
+train <- read.csv("Literature Review/Kernels/train_2.csv")
+test <- read.csv("Literature Review/Kernels/test_2.csv")
 
 # Model partition
 outcome <- train$SalePrice
@@ -211,9 +211,13 @@ x.indep <- c(grep("OverallQual", colnames(train)),
              grep("TotalSF", colnames(train)),
              grep("GarageCars", colnames(train)),
              grep("YearRemodAdd", colnames(train)),
+             grep("Fireplaces", colnames(train)),
              grep("YearBuilt", colnames(train)),
+             grep("GarageType_1", colnames(train)),
+             grep("HeatingQC", colnames(train)),
+             grep("GarageType_1", colnames(train)),
              grep("KitchenQual", colnames(train)),
-             grep("ExterQual ", colnames(train)))
+             grep("ExterQual", colnames(train)))
 
 h2o.init()
 train.h2o <- as.h2o(train)
@@ -285,14 +289,14 @@ allGrids <- lapply(solvers, function(solver){
 get_best_id <- function(grid) {
   # print out the mse for all of the models
   model_ids <- grid@model_ids
-  mse <- vector(mode="numeric", length=0)
+  rmse <- vector(mode="numeric", length=0)
   grid_models <- lapply(model_ids, function(model_id) { model = h2o.getModel(model_id) })
   for (i in 1:length(grid_models)) {
-    print(sprintf("mse: %f", h2o.mse(grid_models[[i]])))
-    mse[i] <- h2o.mse(grid_models[[i]])
+    print(sprintf("rmse: %f", h2o.rmse(grid_models[[i]])))
+    rmse[i] <- h2o.rmse(grid_models[[i]])
   }
   
-  best_id <- model_ids[order(mse,decreasing=F)][1]
+  best_id <- model_ids[order(rmse,decreasing=F)][1]
   print(best_id)
   best_id
 }
@@ -314,11 +318,11 @@ write.csv(sub, file = "output/sub6.csv", row.names = FALSE, quote = FALSE)
 #--------------------------------
 grid <- h2o.grid("randomForest",
                  hyper_params = list(
-                   ntrees = c(50, 70, 90),
+                   ntrees = c(70),
                    #mtries = c(2, 3, 4, 5),
-                   max_depth=c(50, 70, 90),
-                   sample_rate = c(0.5,  0.8)
-                  # col_sample_rate_per_tree = c(0.5, 0.9, 1.0)
+                   max_depth=c(70),
+                   sample_rate = c(0.5),
+                   col_sample_rate_per_tree = c(0.5, 0.7, 0.9, 1.0)
                  ),
                  y = y.dep, 
                  x = x.indep,
@@ -351,7 +355,7 @@ h2o.performance(fit.best)
 
 predict.rf <- as.data.frame(h2o.predict(fit.best, test.h2o))
 sub <- data.frame(Id = test$Id, SalePrice  = exp(predict.rf$predict))
-write.csv(sub, file = "output/sub9.csv", row.names = FALSE, quote = FALSE)
+write.csv(sub, file = "output/sub12.csv", row.names = FALSE, quote = FALSE)
 
 #--------------------------------
 # H2O GBM
