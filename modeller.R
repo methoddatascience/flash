@@ -404,3 +404,40 @@ h2o.performance(fit.best)
 predict.gbm <- as.data.frame(h2o.predict(fit.best, test.h2o))
 sub <- data.frame(Id = test$Id, SalePrice  = exp(predict.gbm$predict))
 write.csv(sub, file = "output/sub13.csv", row.names = FALSE, quote = FALSE)
+
+# #--------------------------------
+# # H2O XGBoost
+# #--------------------------------
+# grid <- h2o.xgboost(
+#   x = x.indep,
+#   y = y.dep,
+#   training_frame = trainHex.split[[1]],
+#   validation_frame = trainHex.split[[2]],
+#   nfolds = 10,
+#   stopping_metric = "RMSE",
+#   learn_rate = seq(0.0001, 0.2, 0.0001),
+#   ntrees = c(100, 150),# 200, 250),
+#   max_depth = c(20, 30),
+#   seed = 123
+# )
+# grid
+# 
+# # print out the mse for all of the models
+# model_ids <- grid@model_ids
+# rmse <- vector(mode="numeric", length=0)
+# grid_models <- lapply(model_ids, function(model_id) { model = h2o.getModel(model_id) })
+# for (i in 1:length(grid_models)) {
+#   print(sprintf("rmse: %f", h2o.rmse(grid_models[[i]])))
+#   rmse[i] <- h2o.rmse(grid_models[[i]])
+# }
+# 
+# 
+# best_id <- model_ids[order(rmse,decreasing=F)][1]
+# best_id
+# 
+# fit.best <- h2o.getModel(model_id = best_id[[1]])
+# h2o.performance(fit.best)
+# 
+# predict.gbm <- as.data.frame(h2o.predict(fit.best, test.h2o))
+# sub <- data.frame(Id = test$Id, SalePrice  = exp(predict.gbm$predict))
+write.csv(sub, file = "output/sub13.csv", row.names = FALSE, quote = FALSE)
